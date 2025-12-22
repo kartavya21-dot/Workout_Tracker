@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from contextlib import asynccontextmanager
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from sqlmodel import Field, Session, SQLModel, create_engine, select, Relationship, JSON, Column
 from datetime import datetime
 
@@ -47,7 +47,7 @@ class ExercisePublic(ExerciseBase):
 
 class ExerciseUpdate(SQLModel):
     name: str | None = None
-    day: int | None = None
+    day_id: int | None = None
     sets: List["Set"] | None = None
 
 class ExercisePublicWithDay(ExerciseBase):
@@ -96,9 +96,27 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/day", response_model=List[DayPublic])
-def get_day(session: SessionDep):
-    day = session.exec(select(Day)).all()
-    return day
+def get_day(
+    session: SessionDep,
+    date_start: Optional[datetime] = Query(
+        default=None,
+        description="Filter days created after this date"
+    ),
+    date_end: Optional[datetime] = Query(
+        default=None,
+        description="Filter days created before this date"
+    ),
+):
+    statement = select(Day)
+
+    if date_start:
+        statement = statement.where(Day.created_at >= date_start)
+
+    if date_end:
+        statement = statement.where(Day.created_at <= date_end)
+
+    days = session.exec(statement).all()
+    return days
 
 @app.post("/day")
 def create_day(session: SessionDep, day: DayCreate):
