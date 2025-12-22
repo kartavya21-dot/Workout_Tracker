@@ -19,11 +19,11 @@ class DayCreate(DayBase):
 class DayPublic(DayBase):
     id: int | None
     created_at: datetime | None
-    exercise: List["ExercisePublicWithDay"] = []
+    exercises: List["ExercisePublicWithDay"] | None = []
 
 class DayUpdate(SQLModel):
     name: str | None = None
-    exercise: List["Exercise"] | None = None
+    exercises: List["Exercise"] | None = None
     created_at: datetime | None = None
 
 # Exercise
@@ -42,8 +42,8 @@ class ExerciseCreate(ExerciseBase):
     day_id: int
 
 class ExercisePublic(ExerciseBase):
-    id: int
-    day_id: int
+    id: int | None
+    day_id: int | None
 
 class ExerciseUpdate(SQLModel):
     name: str | None = None
@@ -60,7 +60,7 @@ class Set(SQLModel, table=True):
     exercise_id: int | None = Field(foreign_key="exercise.id")
     exercise: Exercise = Relationship(back_populates="sets")
 
-class SetUpdate(SQLModel):
+class SetCreate(SQLModel):
     reps: List[int]
     exercise_id: int
 
@@ -95,8 +95,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/day")
-def get_day(session: SessionDep) -> List[DayPublic]:
+@app.get("/day", response_model=List[DayPublic])
+def get_day(session: SessionDep):
     day = session.exec(select(Day)).all()
     return day
 
@@ -108,8 +108,8 @@ def create_day(session: SessionDep, day: DayCreate):
     session.refresh(db_day)
     return db_day
 
-@app.get("/exercise")
-def get_exercise(session: SessionDep) -> ExercisePublicWithDay:
+@app.get("/exercise", response_model=List[ExercisePublicWithDay])
+def get_exercise(session: SessionDep):
     exercise = session.exec(select(Exercise)).all()
     return exercise
 
@@ -121,4 +121,10 @@ def create_exercise(session: SessionDep, exercise: ExerciseCreate):
     session.refresh(db_exercise)
     return db_exercise
 
-# @app.
+@app.post("/addSetToExercise")
+def create_set(session: SessionDep, set: SetCreate) -> SetPublicWithExercise:
+    db_set = Set.model_validate(set)
+    session.add(db_set)
+    session.commit()
+    session.refresh(db_set)
+    return db_set
