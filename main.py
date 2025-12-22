@@ -17,9 +17,9 @@ class DayCreate(DayBase):
     pass
 
 class DayPublic(DayBase):
-    id: int
-    created_at: datetime
-    exercise: List["ExercisePublicWithDay"]
+    id: int | None
+    created_at: datetime | None
+    exercise: List["ExercisePublicWithDay"] = []
 
 class DayUpdate(SQLModel):
     name: str | None = None
@@ -33,8 +33,8 @@ class ExerciseBase(SQLModel):
 class Exercise(ExerciseBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     
-    day_id: int = Field(foreign_key="day.id")
-    day: Day = Relationship(back_populates="exercises")
+    day_id: int | None = Field(foreign_key="day.id")
+    day: Day | None = Relationship(back_populates="exercises")
     
     sets: List["Set"] | None = Relationship(back_populates="exercise")
 
@@ -96,14 +96,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/day")
-def get_day(session: SessionDep) -> DayPublic:
+def get_day(session: SessionDep) -> List[DayPublic]:
     day = session.exec(select(Day)).all()
     return day
-
-@app.get("/exercise")
-def get_exercise(session: SessionDep) -> ExercisePublicWithDay:
-    exercise = session.exec(select(Exercise)).all()
-    return exercise
 
 @app.post("/day")
 def create_day(session: SessionDep, day: DayCreate):
@@ -112,3 +107,18 @@ def create_day(session: SessionDep, day: DayCreate):
     session.commit()
     session.refresh(db_day)
     return db_day
+
+@app.get("/exercise")
+def get_exercise(session: SessionDep) -> ExercisePublicWithDay:
+    exercise = session.exec(select(Exercise)).all()
+    return exercise
+
+@app.post("/addExerciseToDay")
+def create_exercise(session: SessionDep, exercise: ExerciseCreate):
+    db_exercise = Exercise.model_validate(exercise)
+    session.add(db_exercise)
+    session.commit()
+    session.refresh(db_exercise)
+    return db_exercise
+
+# @app.
