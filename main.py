@@ -51,27 +51,25 @@ class ExerciseUpdate(SQLModel):
     sets: List["Set"] | None = None
 
 class ExercisePublicWithDay(ExerciseBase):
-    sets: List["SetPublicWithExercise"]
+    sets: List["SetPublic"]
 
 # Set
-class Set(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True) 
-    reps: List[int] | None = Field(sa_column=Column(JSON))
+class SetBase(SQLModel):
+    unit: str
+    count: int
+
+class Set(SetBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
     exercise_id: int | None = Field(foreign_key="exercise.id")
-    exercise: Exercise = Relationship(back_populates="sets")
+    exercise: Exercise = Relationship(back_populates="sets")  
 
-class SetCreate(SQLModel):
-    reps: List[int]
+class SetCreate(SetBase):
     exercise_id: int
 
-class SetPublic(SQLModel):
+class SetPublic(SetBase):
     id: int
-    reps: List[int]
     exercise_id: int
-
-class SetPublicWithExercise(SQLModel):
-    reps: List[int]
-
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -105,7 +103,7 @@ def get_day(
     date_end: Optional[datetime] = Query(
         default=None,
         description="Filter days created before this date"
-    ),
+    )
 ):
     statement = select(Day)
 
@@ -118,7 +116,7 @@ def get_day(
     days = session.exec(statement).all()
     return days
 
-@app.post("/day")
+@app.post("/day", response_model=DayPublic)
 def create_day(session: SessionDep, day: DayCreate):
     db_day = Day.model_validate(day)
     session.add(db_day)
@@ -139,8 +137,8 @@ def create_exercise(session: SessionDep, exercise: ExerciseCreate):
     session.refresh(db_exercise)
     return db_exercise
 
-@app.post("/addSetToExercise")
-def create_set(session: SessionDep, set: SetCreate) -> SetPublicWithExercise:
+@app.post("/addSetToExercise", response_model= SetPublic)
+def create_set(session: SessionDep, set: SetCreate):
     db_set = Set.model_validate(set)
     session.add(db_set)
     session.commit()
