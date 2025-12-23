@@ -32,10 +32,10 @@ class ExerciseBase(SQLModel):
 
 class Exercise(ExerciseBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    
+
     day_id: int | None = Field(foreign_key="day.id")
     day: Day | None = Relationship(back_populates="exercises")
-    
+
     sets: List["Set"] | None = Relationship(back_populates="exercise")
 
 class ExerciseCreate(ExerciseBase):
@@ -144,3 +144,16 @@ def create_set(session: SessionDep, set: SetCreate):
     session.commit()
     session.refresh(db_set)
     return db_set
+
+@app.post("/addSetInBulk", response_model=List[SetPublic])
+def create_set_in_bulk(session: SessionDep, sets: List[SetCreate]):
+
+    db_sets = [Set.model_validate(s) for s in sets]
+
+    session.add_all(db_sets)
+    session.commit()
+
+    for set in db_sets:
+        session.refresh(set)
+
+    return db_sets
