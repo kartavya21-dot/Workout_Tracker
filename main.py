@@ -62,7 +62,7 @@ class Set(SetBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     exercise_id: int | None = Field(foreign_key="exercise.id")
-    exercise: Exercise = Relationship(back_populates="sets")  
+    exercise: Exercise = Relationship(back_populates="sets")
 
 class SetCreate(SetBase):
     exercise_id: int
